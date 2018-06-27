@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="97b4b1d6-011c-4a8d-9d95-3eced1c0b192">
+		<http:listener-connection host="0.0.0.0" port="8082" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="5a9903bf-02bd-4388-86ca-3a6709701d46" />
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="df43417f-de13-4fef-a05d-e67795517187" >
+		<db:generic-connection url='jdbc:sqlite:C:\Projects\databaseAPI\csvdb.db' driverClassName="org.sqlite.JDBC" />
+	</db:config>
+	<flow name="jsonFlow" doc:id="2685f4af-6262-461c-984f-c477d23355a9" >
+		<http:listener doc:name="Listener" doc:id="2fd49c20-9c1e-4ace-ace4-a0f25cded128" config-ref="HTTP_Listener_config" path="/{table}"/>
+		<ee:transform doc:name="Transform Message" doc:id="143a2788-9339-47c0-852a-ee36115f9f17" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+'SELECT' ++ ' ' ++ attributes.queryParams.columns as String ++ ' '
+++ 'FROM' ++ ' ' ++ attributes.uriParams.table as String]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:select doc:name="Select" doc:id="368d435a-1d12-4111-a9af-f8c907e99c9c" config-ref="Database_Config">
+			<db:sql >#[payload]</db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="33c6680f-0dcb-4c34-bd35-dd6b64f519f9" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="csvFlow" doc:id="35b0497c-c5aa-4b9b-8d2e-f47aca1400fd">
+		<http:listener doc:name="Listener" doc:id="d3e671f2-f310-4323-b61e-aca13851ff9d" config-ref="HTTP_Listener_config" path="/{table}" />
+		<ee:transform doc:name="Transform Message" doc:id="46768eba-d280-4174-a37c-c283df6d4ead">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+'SELECT' ++ ' ' ++ attributes.queryParams.columns as String ++ ' '
+++ 'FROM' ++ ' ' ++ (attributes.uriParams.table as String)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:select doc:name="Select" doc:id="0dc22ace-3390-452c-8dcb-1b145811d480" config-ref="Database_Config">
+			<db:sql>#[payload]</db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="e376913f-f277-47a9-bc7b-c18408eaad23">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output text/csv header = true, separator = ';'
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="testFlow" doc:id="6bcf649a-4afe-437e-b29e-870e94971ebf" >
+		<http:listener doc:name="Listener" doc:id="3556f4bf-6a4b-4bf9-9b37-ff4af75c7f6d" config-ref="HTTP_Listener_config" path="/test"/>
+		<ee:transform doc:name="Transform Message" doc:id="a6a7dfe1-e131-4ca8-a2b0-cfbe65373de0">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+'SELECT' ++ ' ' ++ attributes.queryParams.columns as String ++ ' '
+++ 'FROM' ++ ' ' ++ attributes.queryParams.table as String]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:select doc:name="Copy_of_Select" doc:id="b2689d1e-66a6-4c3f-a992-9ac4fc1b8e86" config-ref="Database_Config">
+			<db:sql>#[payload]</db:sql>
+		</db:select>
+		<ee:transform doc:name="Copy_of_Transform Message" doc:id="1751db56-f1d4-4ae2-90dd-c519da4925e9">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
